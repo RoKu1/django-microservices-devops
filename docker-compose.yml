@@ -1,0 +1,54 @@
+version: "3.3"
+
+services:
+  userservicedb:
+    image: postgres
+    container_name: userservice_DB
+    restart: always
+    expose:
+      - 5432
+    volumes:
+      - ./userservice/data/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  userservice:
+    build:
+        context: ./userservice
+    container_name: userservice_API
+    restart: always
+#    entrypoint: ./docker-entrypoint.sh
+#    command: python manage.py runserver 0.0.0.0:8001
+    command: gunicorn --bind 0.0.0.0:8001 userservice.wsgi
+    volumes:
+      - ./userservice:/userservice
+    expose:
+      - 8001
+    links:
+      - userservicedb
+    env_file:
+        - ./userservice/.env.dev
+    depends_on:
+      - userservicedb
+    healthcheck:
+      test: curl --fail -s http://localhost/api/user/status/ || exit 0
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  reverseproxy:
+    build: ./reverseproxy
+    container_name: nginx
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - userservicedb
+      - userservice
