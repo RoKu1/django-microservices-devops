@@ -1,2 +1,2 @@
-# django-microservices-devops
-This is a mini devops project using django microservices
+# django-microservices
+This is a mini project using django microservices
